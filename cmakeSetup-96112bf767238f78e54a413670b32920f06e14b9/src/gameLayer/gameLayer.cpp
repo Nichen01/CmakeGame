@@ -9,6 +9,7 @@
 #include <sstream>
 #include "imfilebrowser.h"
 #include <gl2d/gl2d.h>
+#include <tiledRenderer.h>
 
 //testing github
 struct GameData
@@ -20,6 +21,8 @@ struct GameData
 gl2d::Renderer2D renderer;
 gl2d::Texture mira;
 gl2d::Texture background;
+
+TiledRenderer tiledRenderer;
 
 bool initGame()
 {
@@ -35,6 +38,8 @@ bool initGame()
 	mira.loadFromFile(RESOURCES_PATH "mira.jpg", true);
 	//load background from file5
 	background.loadFromFile(RESOURCES_PATH "Backgrounds/SpaceBackground.png", true);
+	
+	tiledRenderer.texture = background;
 
 	return true;
 }
@@ -55,7 +60,9 @@ bool gameLogic(float deltaTime)
 
 
 #pragma region render background
-	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 150, 10, 200, w, h);
+	tiledRenderer.render(renderer);
+	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 200, 10, 200, w, h);
+	renderer.currentCamera.zoom = 2;
 	renderer.renderRectangle({ 0,0,1000,1000 }, background);
 #pragma endregion
 
@@ -63,32 +70,51 @@ bool gameLogic(float deltaTime)
 	
 
 #pragma region movement1
-	if (platform::isKeyHeld(platform::Button::Left))
+	glm::vec2 move = {};
+
+	if (
+		platform::isButtonHeld(platform::Button::W) ||
+		platform::isButtonHeld(platform::Button::Up)
+		)
 	{
-		gameData.playerPos.x -= deltaTime * 50;
+		move.y = -1;
 	}
-	if (platform::isKeyHeld(platform::Button::Right))
+	if (
+		platform::isButtonHeld(platform::Button::S) ||
+		platform::isButtonHeld(platform::Button::Down)
+		)
 	{
-		gameData.playerPos.x += deltaTime * 50;
+		move.y = 1;
 	}
-	if (platform::isKeyHeld(platform::Button::Up))
+	if (
+		platform::isButtonHeld(platform::Button::A) ||
+		platform::isButtonHeld(platform::Button::Left)
+		)
 	{
-		gameData.playerPos.y -= deltaTime * 50;
+		move.x = -1;
 	}
-	if (platform::isKeyHeld(platform::Button::Down))
+	if (
+		platform::isButtonHeld(platform::Button::D) ||
+		platform::isButtonHeld(platform::Button::Right)
+		)
 	{
-		gameData.playerPos.y += deltaTime * 50;
+		move.x = 1;
 	}
+
+	if (move.x != 0 || move.y != 0)
+	{
+		move = glm::normalize(move);
+		move *= deltaTime * 200; //200 pixels per second
+		gameData.playerPos += move;
+	}
+#pragma endregion
+
 
 	gameData.playerPos = glm::clamp(gameData.playerPos, glm::vec2{0,0}, glm::vec2{w - 100,h - 100});
-
-
 	renderer.flush();
 
 
 	//ImGui::ShowDemoWindow();
-
-
 	return true;
 #pragma endregion
 
