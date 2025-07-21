@@ -18,11 +18,17 @@ struct GameData
 
 }gameData;
 
-gl2d::Renderer2D renderer;
-gl2d::Texture mira;
-gl2d::Texture background;
 
-TiledRenderer tiledRenderer;
+
+gl2d::Renderer2D renderer;
+
+constexpr int BACKGROUNDS = 4;
+
+gl2d::Texture mira;
+gl2d::Texture background[BACKGROUNDS];
+TiledRenderer tileRenderer[BACKGROUNDS];
+
+TiledRenderer tiledRenderer[BACKGROUNDS];
 
 bool initGame()
 {
@@ -36,10 +42,25 @@ bool initGame()
 
 	//load character from file
 	mira.loadFromFile(RESOURCES_PATH "mira.jpg", true);
-	//load background from file5
-	background.loadFromFile(RESOURCES_PATH "Backgrounds/SpaceBackground.png", true);
-	
-	tiledRenderer.texture = background;
+
+	//load backgroundS from file
+	background[0].loadFromFile(RESOURCES_PATH "Backgrounds/Background_Nebulae.png", true);
+	background[1].loadFromFile(RESOURCES_PATH "Backgrounds/Background_Dust.png", true);
+	background[2].loadFromFile(RESOURCES_PATH "Backgrounds/Background_Stars.png", true);
+	background[3].loadFromFile(RESOURCES_PATH "Backgrounds/Background_Planets.png", true);
+
+	//Render backgrounds 
+	tiledRenderer[0].texture = background[0];
+	tiledRenderer[1].texture = background[1];
+	tiledRenderer[2].texture = background[2];
+	tiledRenderer[3].texture = background[3];
+
+
+	//LOAD PARALAX EFFECT
+	tiledRenderer[0].paralaxStrength = 0;
+	tiledRenderer[1].paralaxStrength = 0.4;
+	tiledRenderer[2].paralaxStrength = 0.7;
+	tiledRenderer[3].paralaxStrength = 1;
 
 	return true;
 }
@@ -60,16 +81,34 @@ bool gameLogic(float deltaTime)
 
 
 #pragma region render background
-	tiledRenderer.render(renderer);
-	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 200, 10, 200, w, h);
-	renderer.currentCamera.zoom = 2;
-	renderer.renderRectangle({ 0,0,1000,1000 }, background);
-#pragma endregion
-
-	renderer.renderRectangle({ gameData.playerPos, 200, 200 }, mira);
+	
 	
 
-#pragma region movement1
+	//ZOOM CAMERA
+	renderer.currentCamera.zoom = 0.5;
+
+	for (int i = 0; i< BACKGROUNDS; i++)
+	{
+		tiledRenderer[i].render(renderer);
+	}
+
+	
+	renderer.renderRectangle({ 0,0,1000,1000 }, background[3]);
+#pragma endregion
+
+
+
+#pragma region Follow
+
+	//CAMERA FOLLOW PLAYER
+	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 1450, 10, 200, w, h);
+
+#pragma	endregion
+
+	
+	
+
+#pragma region movement
 	glm::vec2 move = {};
 
 	if (
@@ -110,7 +149,35 @@ bool gameLogic(float deltaTime)
 #pragma endregion
 
 
-	gameData.playerPos = glm::clamp(gameData.playerPos, glm::vec2{0,0}, glm::vec2{w - 100,h - 100});
+#pragma region mouse pos 
+
+	glm::vec2 mousePos = platform::getRelMousePosition();
+	glm::vec2 screenCenter(w / 2.f, h / 2.f);
+
+	glm::vec2 mouseDirection = mousePos - screenCenter;
+
+	if (glm::length(mouseDirection) == 0.f)
+	{
+		mouseDirection = { 1,0 };
+	}
+	else
+	{
+		mouseDirection = normalize(mouseDirection);
+	}
+
+	float spaceShipAngle = atan2(mouseDirection.y, -mouseDirection.x);
+
+#pragma endregion
+
+
+
+
+#pragma region render ship
+
+	renderer.renderRectangle({ gameData.playerPos, 250, 250 }, mira,
+		Colors_White, {}, glm::degrees(spaceShipAngle) + 90.f);
+
+#pragma endregion
 	renderer.flush();
 
 
