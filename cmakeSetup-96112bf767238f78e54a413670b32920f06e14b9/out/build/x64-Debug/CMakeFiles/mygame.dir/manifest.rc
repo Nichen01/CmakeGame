@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+1 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "C:/Users/Nicholas/Downloads/cmakeSetup-96112bf767238f78e54a413670b32920f06e14b9/CmakeGame/cmakeSetup-96112bf767238f78e54a413670b32920f06e14b9/out/build/x64-Debug/CMakeFiles/mygame.dir/embed.manifest"
