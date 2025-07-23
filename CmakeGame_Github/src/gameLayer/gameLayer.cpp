@@ -10,11 +10,14 @@
 #include "imfilebrowser.h"
 #include <gl2d/gl2d.h>
 #include <tiledRenderer.h>
+#include <bullet.h>
+#include <vector>
 
-//testing github
+
 struct GameData
 {
 	glm::vec2 playerPos = {100,100};
+	std::vector<Bullet> bullets;
 
 }gameData;
 
@@ -24,11 +27,21 @@ gl2d::Renderer2D renderer;
 
 constexpr int BACKGROUNDS = 4;
 
-gl2d::Texture mira;
+//SPACE SHIPS TEXTURES
+gl2d::Texture spaceShipsTexture;
+gl2d::TextureAtlasPadding spaceShipsAtlas;
+
+//LOAD BULLET TEXTURES
+gl2d::Texture bulletsTexture;
+gl2d::TextureAtlasPadding bulletsAtlas;
+
+//gl2d::Texture mira;
 gl2d::Texture background[BACKGROUNDS];
 TiledRenderer tileRenderer[BACKGROUNDS];
 
 TiledRenderer tiledRenderer[BACKGROUNDS];
+
+
 
 bool initGame()
 {
@@ -36,12 +49,22 @@ bool initGame()
 	gl2d::init();
 	renderer.create();
 
+	//LOAD THE ATLAS WITH PIXEL PADDING
+	spaceShipsTexture.loadFromFileWithPixelPadding
+	(RESOURCES_PATH "spaceships.png", 128, true);
+	spaceShipsAtlas = gl2d::TextureAtlasPadding(5, 2, spaceShipsTexture.GetSize().x, spaceShipsTexture.GetSize().y);
+
+	//LOAD THE BULLET ATLAS WITH PIXEL PADDING
+	bulletsTexture.loadFromFileWithPixelPadding
+	(RESOURCES_PATH "projectiles.png", 500, true);
+	bulletsAtlas = gl2d::TextureAtlasPadding(3, 2, bulletsTexture.GetSize().x, bulletsTexture.GetSize().y);
+
 	//loading the saved data. Loading an entire structure like this makes savind game data very easy.
 	platform::readEntireFile(RESOURCES_PATH "gameData.data", &gameData, sizeof(GameData));
 
 
 	//load character from file
-	mira.loadFromFile(RESOURCES_PATH "mira.jpg", true);
+	//mira.loadFromFile(RESOURCES_PATH "SpaceShip.png", true);
 
 	//load backgroundS from file
 	background[0].loadFromFile(RESOURCES_PATH "Backgrounds/Background_Nebulae.png", true);
@@ -62,6 +85,8 @@ bool initGame()
 	tiledRenderer[2].paralaxStrength = 0.7;
 	tiledRenderer[3].paralaxStrength = 1;
 
+	
+
 	return true;
 }
 
@@ -78,6 +103,7 @@ bool gameLogic(float deltaTime)
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	renderer.updateWindowMetrics(w, h);
+#pragma endregion
 
 
 #pragma region render background
@@ -93,20 +119,9 @@ bool gameLogic(float deltaTime)
 	}
 
 	
-	renderer.renderRectangle({ 0,0,1000,1000 }, background[3]);
+	
 #pragma endregion
 
-
-
-#pragma region Follow
-
-	//CAMERA FOLLOW PLAYER
-	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 1450, 10, 200, w, h);
-
-#pragma	endregion
-
-	
-	
 
 #pragma region movement
 	glm::vec2 move = {};
@@ -149,6 +164,14 @@ bool gameLogic(float deltaTime)
 #pragma endregion
 
 
+#pragma region Follow
+
+	//CAMERA FOLLOW PLAYER
+	renderer.currentCamera.follow(gameData.playerPos, deltaTime * 550, 1, 200, w, h);
+
+#pragma	endregion	
+	
+
 #pragma region mouse pos 
 
 	glm::vec2 mousePos = platform::getRelMousePosition();
@@ -169,29 +192,78 @@ bool gameLogic(float deltaTime)
 
 #pragma endregion
 
+	
+#pragma region handle bullets
 
+
+	if (platform::isLMousePressed())
+	{
+		Bullet b;
+
+		b.position = gameData.playerPos;
+		b.fireDirection = mouseDirection;
+
+		gameData.bullets.push_back(b);
+	}
+
+
+	for (int i = 0; i < gameData.bullets.size(); i++)
+	{
+
+		if (glm::distance(gameData.bullets[i].position, gameData.playerPos) > 5'000)
+		{
+			gameData.bullets.erase(gameData.bullets.begin() + i);
+			i--;
+			continue;
+		}
+
+		gameData.bullets[i].update(deltaTime);
+
+	}
+#pragma endregion
 
 
 #pragma region render ship
+	constexpr float shipSize = 250.f;
 
-	renderer.renderRectangle({ gameData.playerPos, 250, 250 }, mira,
-		Colors_White, {}, glm::degrees(spaceShipAngle) + 90.f);
+	renderer.renderRectangle({ gameData.playerPos - glm::vec2(shipSize / 2,shipSize / 2)
+		, shipSize,shipSize }, spaceShipsTexture,
+		Colors_White, {}, glm::degrees(spaceShipAngle) + 90.f, spaceShipsAtlas.get(3,0));
+#pragma endregion
+
+#pragma region render bullets
+
+	for (auto& b : gameData.bullets)
+	{
+		b.render(renderer, bulletsTexture, bulletsAtlas);
+	}
 
 #pragma endregion
+
+
+
 	renderer.flush();
-
-
 	//ImGui::ShowDemoWindow();
+
+	
+
+	ImGui::Begin("debug");
+
+	ImGui::Text("Bullets count: %d", (int)gameData.bullets.size());
+
+	ImGui::End();
+
 	return true;
-#pragma endregion
 
 }
+
+
 
 //This function might not be be called if the program is forced closed
 void closeGame()
 {
 
 	//saved the data.
-	platform::writeEntireFile(RESOURCES_PATH "gameData.data", &gameData, sizeof(GameData));
+	//platform::writeEntireFile(RESOURCES_PATH "gameData.data", &gameData, sizeof(GameData));
 
 }
